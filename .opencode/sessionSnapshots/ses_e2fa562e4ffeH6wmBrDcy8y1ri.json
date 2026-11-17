@@ -1,0 +1,215 @@
+{
+  "sessionId": "ses_e2fa562e4ffeH6wmBrDcy8y1ri",
+  "exportedAt": 1794512470681,
+  "sessionData": {
+    "type": "sessionData",
+    "sessionId": "ses_e2fa562e4ffeH6wmBrDcy8y1ri",
+    "title": "Session",
+    "messages": [
+      {
+        "role": "user",
+        "id": "msg_mwdwmvwt_af1b4cf659cb5da750f2",
+        "text": "LETS CONTINUE",
+        "messageIndex": 0
+      },
+      {
+        "role": "assistant",
+        "id": "msg_1d11aa9e400103e1noEIttNb24",
+        "text": "I don’t have prior context in this session for what to continue. Based on the current workspace, recent work looks centered around customer accounts/portal:\n\n- **Recent files (today):** `migrate_customer.sql`, `customer-register.php`, `index.php`, `signin.php`, `register.php`\n- **Customer flow present:** `customer-register.php` creates a `customer` user + linked `customers` row; `modules/customer/` has `index.php`, `orders.php`, `payments.php`, `designs.php`\n- **DB migration drafted:** `migrate_customer.sql` adds `users.role = 'customer'`, `customers.user_id`, and payment approval fields (`payments.status/approved_by/approved_at`)\n- **Debug artifact:** `_check.php` queries a specific test user\n\nWhat would you like to continue with? For example:\n1. **Apply/verify the migration** (`migrate_customer.sql`) against the database\n2. **Finish customer auth/UX** (sign-in routing, links between `index/login/signin/register/customer-register`, role-based redirects)\n3. **Build out customer portal pages** (`modules/customer/*`) or payment approval flow\n4. **Clean up/test** (remove `_check.php`, run checks, fix any bugs)\n\nTell me the specific goal (or the last thing you were working on) and I’ll pick it up from there.",
+        "messageIndex": 1,
+        "meta": {
+          "processingStartedAt": 1794509520647,
+          "processingCompletedAt": 1794509556468
+        }
+      },
+      {
+        "role": "user",
+        "id": "msg_mwdxb3gv_45cf1b5af7f77fb0e506",
+        "text": "I WANT TO ADD A SECTION WHERE USERS CAN  MAKE ORDERS BUT ARE RESTRICTED FROM HAVING ACCESS TO  DASHBOARD, EXPENSE, DELIIVERY, MEASUREMENTS, AND THE REST. wITH DESIGN, THEY CAN CHOOSE THE AVAILABEL DESIGN DISPLAYED FROM THE DESING SECTION",
+        "messageIndex": 2
+      },
+      {
+        "role": "assistant",
+        "id": "msg_1d12ca38a0012cENA2RJHz8YTi",
+        "text": "## Customer ordering section (restricted access) is in place\n\n**What customers can do**\n- **Register:** `customer-register.php` creates a `customer` user and linked `customers` record.\n- **Sign in:** `index.php` (and `login.php`) now routes `customer` accounts to `/modules/customer/index.php` (staff go to `/dashboard.php`).\n- **Customer portal:** `modules/customer/index.php` shows account/order/payment summary and quick actions.\n- **Browse & choose designs:** `modules/customer/designs.php` lists available designs from the `designs` table and links to order with a preselected design (`?design=...`).\n- **Place orders:** `modules/customer/orders.php` lets customers select an available design, enter fabric/quantity/dates/instructions, and submits an order tied to their own customer record (status `Pending`, total based on design estimate).\n- **Payments:** `modules/customer/payments.php` allows submitting payments for their orders.\n\n**Access restrictions (already enforced)**\n- `includes/header.php` blocks customers from staff areas: `/dashboard.php`, `/modules/customers/`, `/modules/measurements/`, `/modules/designs/` (staff), `/modules/orders/` (staff), `/modules/payments/` (staff), `/modules/deliveries/`, `/modules/expenses/`, `/modules/employees/`, `/modules/reports/`, `/modules/settings/` (redirects to `/modules/customer/index.php`).\n- `includes/functions.php` provides `requireCustomer()` / `requireStaff()` / `isCustomer()` and `navItemsByRole()` so customers only see: **Browse Designs**, **My Orders**, **My Payments**.\n\n## Fixes applied\n- **`modules/customer/index.php`**: fixed broken stat queries that called `prepare(...)->fetchColumn([...])` without executing (order count and pending payment now execute correctly).\n- **`modules/customer/orders.php`**: fixed order-number generation to use an executed count query.\n- **`index.php`**: added a clear **“Customer? Create customer account…”** link to `customer-register.php` alongside the staff registration link.\n- **`includes/sidebar.php`**: brand/logo link now points to the customer portal for `customer` users (staff still go to dashboard).\n\n## Important: database must include customer fields\nCustomer accounts/orders rely on schema in `migrate_customer.sql` / updated `database/schema.sql`:\n- `users.role` includes `customer`\n- `customers.user_id` (FK to `users`)\n- `payments.status/approved_by/approved_at` (used by customer payments)\n\nIf your DB was created before these changes, apply `migrate_customer.sql` in phpMyAdmin/MySQL (e.g. against `priest_db`) before testing customer registration/login/order placement.\n\n**Quick test flow:** create a customer at `/customer-register.php` → sign in at `/index.php` → Browse Designs → Order This Design / Place Order → confirm you cannot access `/dashboard.php` or staff modules like `/modules/expenses/`, `/modules/deliveries/`, `/modules/measurements/`.",
+        "messageIndex": 3,
+        "meta": {
+          "processingStartedAt": 1794510650185,
+          "processingCompletedAt": 1794510741654
+        }
+      },
+      {
+        "role": "user",
+        "id": "msg_mwdxrbte_d47090f3a928a1eec06f",
+        "text": "customer-register.php\nHAVE YOU IMPLEMENTED IT",
+        "messageIndex": 4
+      },
+      {
+        "role": "assistant",
+        "id": "msg_1d1370a7f001I17QL4ZascPYNd",
+        "text": "Yes — `customer-register.php` is already implemented in this workspace (`c:\\xampp\\Priest\\customer-register.php`).\n\nIt currently:\n- Redirects logged-in users to `/modules/customer/index.php`\n- Shows a customer sign-up form (full name, email, phone, password/confirm) with CSRF protection\n- Validates input (required fields, valid email, min 6-char password, matching passwords, unique email)\n- Creates records in a transaction:\n  - `users`: `full_name`, `email`, `password_hash`, `role = 'customer'`, `status = 'active'`\n  - `customers`: generated `customer_id` (`CUST-######`), linked `user_id`, `full_name`, `phone`, `email`\n- Sets a success flash and redirects to `/index.php` for sign-in (rolls back on error)\n\n**Note:** it depends on the DB having the customer schema in place (`users.role` allowing `customer` and `customers.user_id`). If needed, apply `migrate_customer.sql` (or use the updated `database/schema.sql`) before using it. I didn’t modify this file in this session; I only added a clearer link to it from `index.php`.",
+        "messageIndex": 5,
+        "meta": {
+          "processingStartedAt": 1794511407502,
+          "processingCompletedAt": 1794511416608
+        }
+      },
+      {
+        "role": "user",
+        "id": "msg_mwdxu3f1_6304d4ff6b5c40a8c465",
+        "text": "I am sing xamp but i ma not seeing any reflection, i want to sign in as a user, i want to see only the user interface",
+        "messageIndex": 6
+      },
+      {
+        "role": "assistant",
+        "id": "msg_1d1392160001X7bqpv1KiNgwJ8",
+        "text": "A few things to check (this is why you’re likely not seeing changes / not getting the customer-only UI):\n\n## 1) Make sure you’re editing the folder XAMPP is serving\n- Your app’s base URL is set to **`/priest`** in `config/database.php` (`PRIEST_BASE_URL = '/priest'`), so it should be opened as: **`http://localhost/priest/`**\n- XAMPP typically serves from **`C:\\xampp\\htdocs\\...`** (I see `C:\\xampp\\htdocs\\priest` exists). Your current workspace is **`C:\\xampp\\Priest`** — if that’s a different copy than `htdocs\\priest`, edits here **won’t reflect** in the browser.\n  - **Fix:** work directly in `C:\\xampp\\htdocs\\priest`, or copy/sync the updated files from `C:\\xampp\\Priest` into `C:\\xampp\\htdocs\\priest`, then hard-refresh the browser (Ctrl+F5).\n\n## 2) Set up the database (required for customer accounts/orders)\nIn phpMyAdmin (XAMPP), for database `priest_db`:\n- If starting fresh: import `database/schema.sql` (it includes `users.role='customer'`, `customers.user_id`, payment approval fields).\n- If `priest_db` already exists from before: run `migrate_customer.sql` so it adds the missing columns/enum values.\n- Ensure MySQL is running and credentials in `config/database.php` match (`localhost`, `priest_db`, `root`, empty password by default).\n\n## 3) Create and sign in as a **customer** (to see only the customer UI)\n1. Go to **`http://localhost/priest/customer-register.php`** and create a customer account.\n2. Sign in at **`http://localhost/priest/index.php`** with that email/password.\n3. You should land on **`/priest/modules/customer/index.php`** (Customer Portal) with only: **Browse Designs**, **My Orders**, **My Payments** — no Dashboard/Expenses/Deliveries/Measurements/etc.\n4. Staff/admin login (e.g. `admin@priest.local` / `admin123` if seeded) will still go to the staff dashboard.\n\n## 4) Quick checks if it still doesn’t reflect\n- Confirm Apache is running and you’re not hitting a cached page (Ctrl+F5 / try incognito).\n- Confirm the file you changed is the one under the served path (e.g. open `C:\\xampp\\htdocs\\priest\\customer-register.php` directly to verify it contains the customer registration form).\n- If login/registration errors mention unknown column/enum or role issues, the migration/schema step above wasn’t applied to `priest_db`.\n\nIf you tell me (1) the exact URL you’re opening, (2) whether you’re working in `htdocs\\priest` or `C:\\xampp\\Priest`, and (3) any error/flash message you see, I can pinpoint the exact blocker.",
+        "messageIndex": 7,
+        "meta": {
+          "processingStartedAt": 1794511536586,
+          "processingCompletedAt": 1794511563845
+        }
+      },
+      {
+        "role": "user",
+        "id": "msg_mwdxuyxl_22325d629f6d3047aaab",
+        "text": "customer-register.php\ndo the building",
+        "messageIndex": 8
+      },
+      {
+        "role": "assistant",
+        "id": "msg_1d139ecdc001wE6nYHAcGSTJzA",
+        "text": "Built/deployed the customer registration and customer-only UI to your XAMPP-served app:\n\n- **Synced to served folder:** copied `customer-register.php`, `index.php`, `login.php`, `signin.php`, `register.php`, `includes/`, `modules/customer/`, and `migrate_customer.sql` from `C:\\xampp\\Priest` → `C:\\xampp\\htdocs\\priest` (so `http://localhost/priest/` reflects the changes).\n\n**How to sign in as a customer and see only the customer interface**\n1. **Start XAMPP:** Apache + MySQL running.\n2. **Database:** in phpMyAdmin for `priest_db`, apply `migrate_customer.sql` if your DB predates customer support (needs `users.role` to include `customer` and `customers.user_id`). Use `database/schema.sql` instead if creating the DB fresh.\n3. **Create a customer account:** open `http://localhost/priest/customer-register.php`, fill the form, submit.\n4. **Sign in:** open `http://localhost/priest/index.php`, log in with that customer email/password.\n5. You’ll land in **`/modules/customer/index.php`** (Customer Portal) with only **Browse Designs**, **My Orders** (place orders), and **My Payments** — staff pages like Dashboard, Expenses, Deliveries, Measurements, etc. are blocked for customer accounts.\n\n**Notes:** customer registration is handled by `customer-register.php` (creates a `customer` user + linked customer record). If you still don’t see changes, hard-refresh (Ctrl+F5) and confirm you’re visiting `http://localhost/priest/...` (not a different copy/path). If registration/login shows a DB error, the migration step wasn’t applied to `priest_db`.",
+        "messageIndex": 9,
+        "meta": {
+          "processingStartedAt": 1794511577431,
+          "processingCompletedAt": 1794511610775
+        }
+      },
+      {
+        "role": "user",
+        "id": "msg_mwdy29wm_300c0b2ce62d111392e9",
+        "text": "customer-register.php\nhow do i apply migrate customer.sql",
+        "messageIndex": 10
+      },
+      {
+        "role": "assistant",
+        "id": "msg_1d13ed63d001j6oTq3gkS7uZjN",
+        "text": "In XAMPP, you can apply `migrate_customer.sql` like this (phpMyAdmin is easiest):\n\n## Option 1: phpMyAdmin (recommended)\n1. Start **Apache** and **MySQL** in the XAMPP Control Panel.\n2. Open **phpMyAdmin**: `http://localhost/phpmyadmin`\n3. In the left sidebar, click your database: **`priest_db`**.\n4. Click the **SQL** tab (top menu).\n5. Open `migrate_customer.sql` on your computer and copy its contents, **or** click **Import** and choose the file:\n   - **Import method:** go to **Import** tab → **Choose File** → select `C:\\xampp\\htdocs\\priest\\migrate_customer.sql` (or `C:\\xampp\\Priest\\migrate_customer.sql`) → scroll down → **Import/Go**.\n   - **SQL method:** paste this into the SQL box and click **Go**:\n     ```sql\n     -- Add customer to the role enum\n     ALTER TABLE `users` MODIFY COLUMN `role` ENUM('administrator','manager','tailor','customer') NOT NULL DEFAULT 'manager';\n\n     -- Link customers to user accounts\n     ALTER TABLE `customers`\n       ADD COLUMN `user_id` INT UNSIGNED DEFAULT NULL AFTER `customer_id`,\n       ADD UNIQUE KEY `uq_customers_user_id` (`user_id`),\n       ADD CONSTRAINT `fk_customers_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;\n\n     -- Payment approval fields\n     ALTER TABLE `payments`\n       ADD COLUMN `status` ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending' AFTER `notes`,\n       ADD COLUMN `approved_by` INT UNSIGNED DEFAULT NULL AFTER `status`,\n       ADD COLUMN `approved_at` TIMESTAMP NULL DEFAULT NULL AFTER `approved_by`,\n       ADD KEY `idx_payments_status` (`status`),\n       ADD CONSTRAINT `fk_payments_approved_by` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;\n     ```\n6. You should see a success message.\n\n## Option 2: MySQL command line (XAMPP Shell)\n1. Open **Shell** from XAMPP Control Panel (or Command Prompt).\n2. Run:\n   ```bat\n   cd C:\\xampp\\mysql\\bin\n   mysql -u root -p priest_db < \"C:\\xampp\\htdocs\\priest\\migrate_customer.sql\"\n   ```\n   (Press Enter if root has no password.)\n\n**Notes:** Run it against **`priest_db`** (not a fresh schema import). If you get “Duplicate column/key/constraint” errors, those parts were already applied—only run the statements that haven’t been applied yet. After this, `customer-register.php` and customer login/ordering will work against the updated schema.",
+        "messageIndex": 11,
+        "meta": {
+          "processingStartedAt": 1794511918242,
+          "processingCompletedAt": 1794511931219
+        }
+      },
+      {
+        "role": "user",
+        "id": "msg_mwdy4zdx_a90edd5b3e5965f69f20",
+        "text": "customer-register.php\nwhere do i see migate customer.sql",
+        "messageIndex": 12
+      },
+      {
+        "role": "assistant",
+        "id": "msg_1d140c301001feZ275JPHA1aXN",
+        "text": "`migrate_customer.sql` is in your project folder. Based on your setup, you can find it here:\n\n- **XAMPP served copy (use this in phpMyAdmin Import):**  \n  `C:\\xampp\\htdocs\\priest\\migrate_customer.sql`\n\n- **Workspace copy:**  \n  `C:\\xampp\\Priest\\migrate_customer.sql`\n\n**How to see/open it:**\n- In **File Explorer**, go to either path above and open it with Notepad (or any text editor) to view/copy its SQL.\n- In **phpMyAdmin** (`http://localhost/phpmyadmin` → select `priest_db` → **Import** tab → **Choose File**), browse to `C:\\xampp\\htdocs\\priest\\migrate_customer.sql` and select it.\n\nIf you don’t see it in File Explorer, make sure you’re looking inside the `priest` folder (not just `C:\\xampp\\htdocs` or `C:\\xampp`).",
+        "messageIndex": 13,
+        "meta": {
+          "processingStartedAt": 1794512044573,
+          "processingCompletedAt": 1794512051911
+        }
+      },
+      {
+        "role": "user",
+        "id": "msg_mwdy9cu9_3aac7232b49330ffb664",
+        "text": "customer-register.php\nafter choosing file, what next",
+        "messageIndex": 14
+      },
+      {
+        "role": "assistant",
+        "id": "msg_1d143e009001Nor2elxd8qJZOE",
+        "text": "After choosing `migrate_customer.sql` in phpMyAdmin’s **Import** tab:\n\n1. **Confirm the database:** make sure **`priest_db`** is selected in the left sidebar (the import runs against the selected database).\n2. **Leave defaults as-is** (usually fine):  \n   - Format: **SQL**  \n   - Character set: `utf-8` (default)  \n   - “Partial import”, etc. can stay unchecked/default\n3. Scroll to the bottom and click **Import** (or **Go**).\n4. Wait for the result message:\n   - **Success:** you’ll see a green confirmation (e.g. “Import has been successfully finished…” / queries executed).\n   - **Error:** if it says a column/key already exists (e.g. duplicate column `user_id`), that part is already applied—your DB may be partially/fully migrated already.\n\nAfter a successful import, try `http://localhost/priest/customer-register.php` to create a customer account, then sign in at `http://localhost/priest/index.php`.",
+        "messageIndex": 15,
+        "meta": {
+          "processingStartedAt": 1794512248639,
+          "processingCompletedAt": 1794512257304
+        }
+      },
+      {
+        "role": "user",
+        "id": "msg_mwdyavgc_609e85fc80866a37f98e",
+        "text": "customer-register.php\nNot Found\nThe requested URL was not found on this server.\n\nApache/2.4.65 (Win64) OpenSSL/3.5.1 PHP/8.5.12 Server at localhost Port 80",
+        "messageIndex": 16
+      },
+      {
+        "role": "assistant",
+        "id": "msg_1d1451c4c001TIu1T65ktlcfpU",
+        "text": "The file exists on disk at `C:\\xampp\\htdocs\\priest\\customer-register.php`, so this is almost always a URL/path mismatch.\n\n**Try this exact URL:**\n- `http://localhost/priest/customer-register.php`\n\n**Check these common causes:**\n1. **Missing `/priest/` in the URL** — `http://localhost/customer-register.php` will 404 if the app lives in `htdocs\\priest`. It must include `/priest/`.\n2. **Confirm the app’s base works:** open `http://localhost/priest/index.php` (or `http://localhost/priest/`).  \n   - If that also 404s, Apache isn’t serving from `C:\\xampp\\htdocs` or the folder name differs (check that `C:\\xampp\\htdocs\\priest` is the right folder in XAMPP).\n   - If `index.php` loads but `customer-register.php` 404s, re-check the filename in `C:\\xampp\\htdocs\\priest` is exactly `customer-register.php` (no extra `.txt`, no double extension).\n3. **Port/path differences:** if you use a different port (e.g. `http://localhost:8080/...`) include it the same way: `http://localhost:8080/priest/customer-register.php`.\n4. **Restart Apache** in XAMPP Control Panel if you recently changed configs (not usually needed just for adding a PHP file).\n\nWhat exact URL are you typing in the browser, and does `http://localhost/priest/index.php` load for you?",
+        "messageIndex": 17,
+        "meta": {
+          "processingStartedAt": 1794512319418,
+          "processingCompletedAt": 1794512339900
+        }
+      },
+      {
+        "role": "user",
+        "id": "msg_mwdycxfi_8321873672e1c66809e5",
+        "text": "index.php\ni am getting error still",
+        "messageIndex": 18
+      },
+      {
+        "role": "assistant",
+        "id": "msg_1d1466bb3001y7yUAf6eO2d11j",
+        "text": "I need the exact error text to diagnose it—“getting error” can mean a few different things. Can you share:\n\n1. **What you see:** the full message on the page (or a screenshot/text). If it’s a blank/white page, say so.\n2. **The URL:** e.g. `http://localhost/priest/index.php`.\n\nIn the meantime, to reveal the actual error:\n\n- **On-screen (temporarily):** add this near the top of `C:\\xampp\\htdocs\\priest\\index.php` (line 2, after `<?php`) while debugging:\n  ```php\n  ini_set('display_errors', '1');\n  ini_set('display_startup_errors', '1');\n  error_reporting(E_ALL);\n  ```\n  Reload and copy the full error.\n- **Apache error log (XAMPP):** check `C:\\xampp\\apache\\logs\\error.log` (open it and look at the newest lines after you reload the page).\n- **PHP error log:** sometimes `C:\\xampp\\php\\logs\\php_error_log` (if enabled).\n\nCommon causes for `index.php` in this app: database `priest_db` missing or credentials wrong in `config/database.php`, missing tables/migration not applied, or a PHP syntax/runtime issue in an included file. Once you paste the exact error, I can point to the specific fix.",
+        "messageIndex": 19,
+        "meta": {
+          "processingStartedAt": 1794512415289,
+          "processingCompletedAt": 1794512425987
+        }
+      },
+      {
+        "role": "user",
+        "id": "msg_mwdydrsh_ba766b7438fd9993d460",
+        "text": "index.php\nNot Found\nThe requested URL was not found on this server.\n\nApache/2.4.65 (Win64) OpenSSL/3.5.1 PHP/8.5.12 Server at localhost Port 80",
+        "messageIndex": 20
+      },
+      {
+        "role": "assistant",
+        "id": "msg_1d14704ad001Lc2u1K3lu9eSJR",
+        "text": "If **`index.php`** also returns “Not Found”, the browser isn’t reaching `C:\\xampp\\htdocs\\priest\\index.php`. Work through these checks:\n\n1. **Use the full app URL (include `/priest/`)**\n   - Open: `http://localhost/priest/` or `http://localhost/priest/index.php`\n   - Do **not** use `http://localhost/index.php` (that points to XAMPP’s root/dashboard, not this app).\n\n2. **Confirm XAMPP is serving `htdocs`**\n   - Open `http://localhost/` — you should see the XAMPP dashboard/welcome page. If you do, Apache’s document root is `C:\\xampp\\htdocs` and `http://localhost/priest/...` should map to `C:\\xampp\\htdocs\\priest\\...`.\n   - If `http://localhost/` doesn’t load, Apache may not be running or may be on another port (check XAMPP Control Panel; if it shows port 8080, try `http://localhost:8080/priest/`).\n\n3. **Verify the file is in the served folder**\n   - Confirm this file exists: `C:\\xampp\\htdocs\\priest\\index.php`\n   - Quick test: create `C:\\xampp\\htdocs\\priest\\test.php` containing `<?php echo \"ok\";` and open `http://localhost/priest/test.php`.  \n     - If `test.php` shows “ok” but `index.php` 404s, tell me the exact URL you used for `index.php`.  \n     - If `test.php` also 404s, Apache isn’t serving that `priest` folder (wrong htdocs path, vhost/config issue, or you’re hitting a different server).\n\n4. **Check for folder/URL typos**\n   - Folder name is `priest` (lowercase) under `htdocs`: `C:\\xampp\\htdocs\\priest\\`\n\nPlease reply with: (a) the exact URL you’re entering, (b) whether `http://localhost/` shows the XAMPP page, and (c) whether `http://localhost/priest/test.php` (after creating it) works. That will pinpoint why `/priest/index.php` isn’t found.",
+        "messageIndex": 21,
+        "meta": {
+          "processingStartedAt": 1794512454637,
+          "processingCompletedAt": 1794512469225
+        }
+      }
+    ],
+    "segments": [],
+    "meta": {
+      "timelineMessageIds": [
+        "msg_mwdwmvwt_af1b4cf659cb5da750f2",
+        "msg_1d11aa9e400103e1noEIttNb24",
+        "msg_mwdxb3gv_45cf1b5af7f77fb0e506",
+        "msg_1d12ca38a0012cENA2RJHz8YTi",
+        "msg_mwdxrbte_d47090f3a928a1eec06f",
+        "msg_1d1370a7f001I17QL4ZascPYNd",
+        "msg_mwdxu3f1_6304d4ff6b5c40a8c465",
+        "msg_1d1392160001X7bqpv1KiNgwJ8",
+        "msg_mwdxuyxl_22325d629f6d3047aaab",
+        "msg_1d139ecdc001wE6nYHAcGSTJzA",
+        "msg_mwdy29wm_300c0b2ce62d111392e9",
+        "msg_1d13ed63d001j6oTq3gkS7uZjN",
+        "msg_mwdy4zdx_a90edd5b3e5965f69f20",
+        "msg_1d140c301001feZ275JPHA1aXN",
+        "msg_mwdy9cu9_3aac7232b49330ffb664",
+        "msg_1d143e009001Nor2elxd8qJZOE",
+        "msg_mwdyavgc_609e85fc80866a37f98e",
+        "msg_1d1451c4c001TIu1T65ktlcfpU",
+        "msg_mwdycxfi_8321873672e1c66809e5",
+        "msg_1d1466bb3001y7yUAf6eO2d11j",
+        "msg_mwdydrsh_ba766b7438fd9993d460",
+        "msg_1d14704ad001Lc2u1K3lu9eSJR"
+      ],
+      "segmentBackingMessageIds": []
+    }
+  }
+}
